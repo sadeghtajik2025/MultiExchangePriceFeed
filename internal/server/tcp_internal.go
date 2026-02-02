@@ -16,7 +16,6 @@ import (
 
 const (
 	tcpWriteTimeout   = 5 * time.Second
-	tcpReadTimeout    = 60 * time.Second
 	tcpBufferSize     = 4096
 	tcpSendBufferSize = 1024
 )
@@ -87,7 +86,8 @@ func (c *TCPClient) readLoop() {
 			return
 		}
 
-		c.conn.SetReadDeadline(time.Now().Add(tcpReadTimeout))
+		// No read deadline - rely on TCP KeepAlive for dead client detection
+		// This allows passive clients (like Trading Engine) to stay connected indefinitely
 
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -229,7 +229,7 @@ func (s *TCPServer) handleConnection(conn net.Conn) {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(true)      // Disable Nagle's algorithm
 		tcpConn.SetKeepAlive(true)    // Enable keep-alive
-		tcpConn.SetKeepAlivePeriod(30 * time.Second)
+		tcpConn.SetKeepAlivePeriod(60 * time.Second) // Detect dead clients every 60s
 	}
 
 	client := NewTCPClient(clientID, conn, s.hub)
