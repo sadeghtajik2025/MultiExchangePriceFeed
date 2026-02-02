@@ -248,9 +248,6 @@ func (t *TwelveAdapter) processMessage(data []byte) {
 			log.Printf("[TwelveData] Price parse error: %v", err)
 			return
 		}
-		// Debug: Log raw price message
-		log.Printf("[TwelveData] RAW price: symbol=%s price=%.5f bid=%.5f ask=%.5f",
-			msg.Symbol, msg.Price, msg.Bid, msg.Ask)
 		t.handlePriceTick(msg)
 
 	case "heartbeat":
@@ -324,6 +321,8 @@ func (t *TwelveAdapter) handlePriceTick(msg TwelveDataMessage) {
 		Source:    models.SourceTwelve,
 		Type:      assetType,
 	}
+
+	log.Printf("[TwelveData] %s | p=%.5f b=%.5f a=%.5f ty=%s", normalizedSymbol, msg.Price, msg.Bid, msg.Ask, assetType)
 
 	// Non-blocking send to avoid backpressure
 	select {

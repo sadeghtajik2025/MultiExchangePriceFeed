@@ -130,21 +130,34 @@ const ws = new WebSocket('ws://localhost:8080/ws');
 
 ws.onmessage = (event) => {
   const tick = JSON.parse(event.data);
-  console.log(`${tick.s}: $${tick.p} (${tick.src})`);
+  console.log(`${tick.s}: $${tick.p}`);
 };
 ```
 
-**Tick Format:**
+**Quote Tick Format (for trades/quotes):**
 ```json
 {
-  "symbol": "BTC-USD",        // Symbol (normalized to dash format)
-  "price": 67234.50,          // Price
-  "bid": 67234.00,            // Bid price
-  "ask": 67235.00,            // Ask price
-  "volume": 1.5,              // Volume
-  "timestamp": 1706363123456789, // Timestamp (microseconds)
-  "source": "massive",        // Source: "twelve", "massive", "twelve_failover", "massive_failover"
-  "type": "crypto"            // Asset type: "crypto" or "forex"
+  "s": "BTC-USD",     // Symbol
+  "p": 67234.50,      // Price
+  "b": 67234.00,      // Bid
+  "a": 67235.00,      // Ask
+  "v": 1.5,           // Volume
+  "t": 1706363123456789, // Timestamp (microseconds)
+  "ty": "CRYPTO"      // Type: "CRYPTO" or "FOREX"
+}
+```
+
+**OHLC Tick Format (for aggregates):**
+```json
+{
+  "s": "BTC-USD",     // Symbol
+  "O": 67200.00,      // Open
+  "H": 67300.00,      // High
+  "L": 67150.00,      // Low
+  "C": 67234.50,      // Close
+  "v": 125.5,         // Volume
+  "t": 1706363123456789, // Timestamp (microseconds)
+  "ty": "CRYPTO"      // Type: "CRYPTO" or "FOREX"
 }
 ```
 
@@ -157,7 +170,7 @@ Low-latency connection for Trading Engine. Feed Core runs a TCP **server** - you
 nc localhost 9000
 
 # Receives newline-delimited JSON ticks:
-{"symbol":"BTC-USD","price":67234.50,"bid":67234.00,"ask":67235.00,"timestamp":1706363123456789,"source":"massive","type":"crypto"}
+{"s":"BTC-USD","p":67234.50,"b":67234.00,"a":67235.00,"v":1.5,"t":1706363123456789,"ty":"CRYPTO"}
 ```
 
 **Trading Engine Client Example (Go):**
@@ -172,15 +185,19 @@ import (
     "net"
 )
 
+// Tick for quote data (trades/quotes)
 type Tick struct {
-    Symbol    string  `json:"symbol"`
-    Price     float64 `json:"price"`
-    Bid       float64 `json:"bid"`
-    Ask       float64 `json:"ask"`
-    Volume    float64 `json:"volume"`
-    Timestamp int64   `json:"timestamp"`
-    Source    string  `json:"source"`
-    Type      string  `json:"type"`
+    Symbol    string  `json:"s"`
+    Price     float64 `json:"p,omitempty"`
+    Bid       float64 `json:"b,omitempty"`
+    Ask       float64 `json:"a,omitempty"`
+    Open      float64 `json:"O,omitempty"`
+    High      float64 `json:"H,omitempty"`
+    Low       float64 `json:"L,omitempty"`
+    Close     float64 `json:"C,omitempty"`
+    Volume    float64 `json:"v,omitempty"`
+    Timestamp int64   `json:"t"`
+    Type      string  `json:"ty"`
 }
 
 func main() {

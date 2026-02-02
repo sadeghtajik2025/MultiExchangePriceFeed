@@ -213,7 +213,11 @@ func (a *Arbitrator) publishTick(tick *models.Tick) {
 	// Log every 100th tick to show data is flowing (avoid log spam)
 	tickCount := atomic.LoadInt64(&a.stats.PrimaryTicksProcessed) + atomic.LoadInt64(&a.stats.BackupTicksProcessed)
 	if tickCount%100 == 1 {
-		log.Printf("[Price] %s: %.5f (source: %s)", tick.Symbol, tick.Price, tick.Source)
+		if tick.IsOHLC() {
+			log.Printf("[OUT] %s | O=%.5f H=%.5f L=%.5f C=%.5f ty=%s", tick.Symbol, tick.Open, tick.High, tick.Low, tick.Close, tick.Type)
+		} else {
+			log.Printf("[OUT] %s | p=%.5f b=%.5f a=%.5f ty=%s", tick.Symbol, tick.Price, tick.Bid, tick.Ask, tick.Type)
+		}
 	}
 
 	select {

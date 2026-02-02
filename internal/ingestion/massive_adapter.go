@@ -495,7 +495,7 @@ func (c *MassiveConnection) handleCryptoTrade(msg MassiveCryptoTrade) {
 		Type:      models.Crypto,
 	}
 
-	log.Printf("[Massive] Crypto XT: %s price=%.2f size=%.6f", msg.Pair, msg.P, msg.S)
+	log.Printf("[Massive] XT %s | p=%.2f v=%.6f ty=CRYPTO", msg.Pair, msg.P, msg.S)
 	c.sendTick(tick)
 }
 
@@ -505,7 +505,7 @@ func (c *MassiveConnection) handleCryptoQuote(msg MassiveCryptoQuote) {
 		return
 	}
 
-	// Use mid price
+	// Use mid price as the price
 	price := (msg.Bp + msg.Ap) / 2
 	if price == 0 {
 		return
@@ -521,7 +521,7 @@ func (c *MassiveConnection) handleCryptoQuote(msg MassiveCryptoQuote) {
 		Type:      models.Crypto,
 	}
 
-	log.Printf("[Massive] Crypto XQ: %s bid=%.2f ask=%.2f", msg.Pair, msg.Bp, msg.Ap)
+	log.Printf("[Massive] XQ %s | p=%.2f b=%.2f a=%.2f ty=CRYPTO", msg.Pair, price, msg.Bp, msg.Ap)
 	c.sendTick(tick)
 }
 
@@ -533,14 +533,17 @@ func (c *MassiveConnection) handleCryptoAgg(msg MassiveCryptoAgg) {
 
 	tick := &models.Tick{
 		Symbol:    msg.Pair,
-		Price:     msg.C, // Use close price
+		Open:      msg.O,
+		High:      msg.H,
+		Low:       msg.L,
+		Close:     msg.C,
 		Volume:    msg.V,
 		Timestamp: msg.S * 1000, // Start timestamp
 		Source:    models.SourceMassive,
 		Type:      models.Crypto,
 	}
 
-	log.Printf("[Massive] Crypto %s: %s O=%.2f H=%.2f L=%.2f C=%.2f V=%.2f", msg.Ev, msg.Pair, msg.O, msg.H, msg.L, msg.C, msg.V)
+	log.Printf("[Massive] %s %s | O=%.2f H=%.2f L=%.2f C=%.2f v=%.2f ty=CRYPTO", msg.Ev, msg.Pair, msg.O, msg.H, msg.L, msg.C, msg.V)
 	c.sendTick(tick)
 }
 
@@ -553,7 +556,7 @@ func (c *MassiveConnection) handleForexQuote(msg MassiveForexQuote) {
 	// Normalize symbol from "EUR/USD" to "EUR-USD"
 	normalizedSymbol := config.NormalizeFromTwelve(msg.P)
 
-	// Use mid price
+	// Use mid price as the price
 	price := (msg.A + msg.B) / 2
 	if price == 0 {
 		return
@@ -569,7 +572,7 @@ func (c *MassiveConnection) handleForexQuote(msg MassiveForexQuote) {
 		Type:      models.Forex,
 	}
 
-	log.Printf("[Massive] Forex C: %s bid=%.5f ask=%.5f", normalizedSymbol, msg.B, msg.A)
+	log.Printf("[Massive] C %s | p=%.5f b=%.5f a=%.5f ty=FOREX", normalizedSymbol, price, msg.B, msg.A)
 	c.sendTick(tick)
 }
 
@@ -584,13 +587,17 @@ func (c *MassiveConnection) handleForexAgg(msg MassiveForexAgg) {
 
 	tick := &models.Tick{
 		Symbol:    normalizedSymbol,
-		Price:     msg.C, // Use close price
+		Open:      msg.O,
+		High:      msg.H,
+		Low:       msg.L,
+		Close:     msg.C,
+		Volume:    float64(msg.V),
 		Timestamp: msg.S * 1000,
 		Source:    models.SourceMassive,
 		Type:      models.Forex,
 	}
 
-	log.Printf("[Massive] Forex %s: %s O=%.5f H=%.5f L=%.5f C=%.5f", msg.Ev, normalizedSymbol, msg.O, msg.H, msg.L, msg.C)
+	log.Printf("[Massive] %s %s | O=%.5f H=%.5f L=%.5f C=%.5f ty=FOREX", msg.Ev, normalizedSymbol, msg.O, msg.H, msg.L, msg.C)
 	c.sendTick(tick)
 }
 
