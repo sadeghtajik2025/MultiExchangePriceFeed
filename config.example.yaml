@@ -1,0 +1,56 @@
+server:
+  port: 8080
+  tcp_port: 9000 # Dedicated port for Trading Engine
+
+# API Keys - Replace with your actual keys
+credentials:
+  twelve_data: "YOUR_TWELVE_DATA_API_KEY"
+  massive: "YOUR_MASSIVE_POLYGON_API_KEY"
+
+# Failover Sensitivity
+settings:
+  primary_provider: "massive"        # Primary data source: "twelve" or "massive"
+  primary_silence_threshold_ms: 500 # If primary is silent for 500ms, use backup
+  reconnect_delay_ms: 1000          # Delay before reconnecting on disconnect
+  max_reconnect_attempts: 10        # Max reconnection attempts before giving up
+
+# Massive Events to subscribe to
+# Crypto: XT (trades), XQ (quotes), XA (aggs/min), XAS (aggs/sec)
+# Forex: C (quotes), CA (aggs/min), CAS (aggs/sec)
+massive_events:
+  crypto:
+    - "XT"   # Trades
+    - "XQ"   # Quotes
+    - "XA"   # Aggregates per minute
+    - "XAS"  # Aggregates per second
+  forex:
+    - "C"    # Quotes
+    - "CA"   # Aggregates per minute
+    - "CAS"  # Aggregates per second
+
+# ============================================================
+# SYMBOL CONFIGURATION (Per Data Source)
+# ============================================================
+# Each data source has its own symbol list.
+# - Symbols in BOTH sources: failover applies (primary -> backup if silent)
+# - Symbols in ONE source only: only that source provides data (no failover)
+#
+# Twelve Data format: BTC/USD, EUR/USD (slash separator, no wildcard support)
+# Massive format: BTC-USD, EUR-USD (dash separator, supports "*" for all)
+# ============================================================
+
+# Twelve Data symbols (no wildcard support - must list explicitly)
+twelve_data_symbols:
+  crypto:
+    - "BTC/USD"
+    - "ETH/USD"
+  forex:
+    - "EUR/USD"
+    - "GBP/USD"
+
+# Massive/Polygon symbols (supports "*" wildcard for all pairs)
+massive_symbols:
+  crypto:
+    - "*"    # All crypto pairs (or list specific: "BTC-USD", "ETH-USD")
+  forex:
+    - "*"    # All forex pairs (or list specific: "EUR-USD", "GBP-USD")
