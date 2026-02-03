@@ -36,12 +36,12 @@ var upgrader = websocket.Upgrader{
 
 // WebSocketClient represents a single WebSocket connection
 type WebSocketClient struct {
-	id       string
-	conn     *websocket.Conn
-	send     chan *models.Tick
-	hub      *engine.Hub
-	closed   int32
-	mu       sync.Mutex
+	id     string
+	conn   *websocket.Conn
+	send   chan *models.Tick
+	hub    *engine.Hub
+	closed int32
+	mu     sync.Mutex
 }
 
 // NewWebSocketClient creates a new WebSocket client
