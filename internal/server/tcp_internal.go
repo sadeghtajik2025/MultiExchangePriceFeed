@@ -2,12 +2,14 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"feed-core/internal/engine"
@@ -22,12 +24,12 @@ const (
 
 // TCPClient represents a connected Trading Engine client
 type TCPClient struct {
-	id       string
-	conn     net.Conn
-	send     chan *models.Tick
-	hub      *engine.Hub
-	closed   int32
-	mu       sync.Mutex
+	id     string
+	conn   net.Conn
+	send   chan *models.Tick
+	hub    *engine.Hub
+	closed int32
+	mu     sync.Mutex
 }
 
 // NewTCPClient creates a new TCP client
@@ -158,7 +160,16 @@ func NewTCPServer(hub *engine.Hub, port int) *TCPServer {
 
 // Start begins listening for TCP connections
 func (s *TCPServer) Start() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	// Use ListenConfig with SO_REUSEADDR to allow immediate port reuse after restart
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			return c.Control(func(fd uintptr) {
+				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
+		},
+	}
+
+	listener, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
 		return fmt.Errorf("failed to start TCP server: %w", err)
 	}
@@ -227,8 +238,8 @@ func (s *TCPServer) handleConnection(conn net.Conn) {
 
 	// Configure socket options for low latency
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
-		tcpConn.SetNoDelay(true)      // Disable Nagle's algorithm
-		tcpConn.SetKeepAlive(true)    // Enable keep-alive
+		tcpConn.SetNoDelay(true)                     // Disable Nagle's algorithm
+		tcpConn.SetKeepAlive(true)                   // Enable keep-alive
 		tcpConn.SetKeepAlivePeriod(60 * time.Second) // Detect dead clients every 60s
 	}
 
@@ -238,7 +249,7 @@ func (s *TCPServer) handleConnection(conn net.Conn) {
 	log.Printf("[TCP] Trading Engine client connected: %s from %s", clientID, conn.RemoteAddr())
 
 	// Send welcome message
-	welcome := fmt.Sprintf(`{"type":"connected","client_id":"%s"}` + "\n", clientID)
+	welcome := fmt.Sprintf(`{"type":"connected","client_id":"%s"}`+"\n", clientID)
 	conn.Write([]byte(welcome))
 
 	// Start read and write loops

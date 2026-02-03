@@ -1,12 +1,15 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"feed-core/internal/engine"
@@ -163,6 +166,7 @@ type WebSocketServer struct {
 	hub       *engine.Hub
 	port      int
 	server    *http.Server
+	listener  net.Listener
 	clientSeq int64 // For generating unique client IDs
 }
 
@@ -182,14 +186,28 @@ func (s *WebSocketServer) Start() error {
 	mux.HandleFunc("/stats", s.handleStats)
 
 	s.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.port),
 		Handler: mux,
 	}
+
+	// Use ListenConfig with SO_REUSEADDR to allow immediate port reuse after restart
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			return c.Control(func(fd uintptr) {
+				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
+		},
+	}
+
+	listener, err := lc.Listen(context.Background(), "tcp", fmt.Sprintf(":%d", s.port))
+	if err != nil {
+		return fmt.Errorf("failed to start WebSocket server: %w", err)
+	}
+	s.listener = listener
 
 	log.Printf("[WebSocket] Server starting on port %d", s.port)
 
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Printf("[WebSocket] Server error: %v", err)
 		}
 	}()
@@ -200,7 +218,10 @@ func (s *WebSocketServer) Start() error {
 // Stop gracefully shuts down the WebSocket server
 func (s *WebSocketServer) Stop() error {
 	if s.server != nil {
-		return s.server.Close()
+		s.server.Close()
+	}
+	if s.listener != nil {
+		s.listener.Close()
 	}
 	return nil
 }
